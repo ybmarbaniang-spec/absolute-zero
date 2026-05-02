@@ -63,6 +63,11 @@ const commands = [
         description: 'Display clan leaderboard'
     },
     {
+        name: 'say',
+        description: 'Make the bot speak',
+        options: [{ name: 'message', type: 3, required: true, description: 'Text to send' }]
+    },
+    {
         name: 'steal-emoji',
         description: 'Add emoji via URL',
         options: [
@@ -117,7 +122,7 @@ client.on('interactionCreate', async (interaction) => {
     // Helper: Hierarchy Check
     const isHigher = (target) => {
         if (!target) return false;
-        if (target.id === guild.ownerId) return true; // Cannot touch owner
+        if (target.id === guild.ownerId) return true;
         return target.roles.highest.position >= executor.roles.highest.position;
     };
 
@@ -164,6 +169,24 @@ client.on('interactionCreate', async (interaction) => {
         return interaction.reply({ embeds });
     }
 
+    // --- UTILITY ---
+    if (commandName === 'say') {
+        if (!executor.permissions.has(PermissionFlagsBits.ManageMessages)) return interaction.reply({ content: 'Unauthorized.', ephemeral: true });
+        const msg = options.getString('message');
+        await interaction.channel.send(msg);
+        return interaction.reply({ content: 'Sent.', ephemeral: true });
+    }
+
+    if (commandName === 'steal-emoji') {
+        if (!executor.permissions.has(PermissionFlagsBits.ManageExpressions)) return interaction.reply({ content: 'Unauthorized.', ephemeral: true });
+        try {
+            await guild.emojis.create({ attachment: options.getString('url'), name: options.getString('name') });
+            return interaction.reply({ content: 'Emoji added.', ephemeral: true });
+        } catch (e) {
+            return interaction.reply({ content: 'Creation failed.', ephemeral: true });
+        }
+    }
+
     // --- MODERATION ---
     if (commandName === 'kick' || commandName === 'ban' || commandName === 'quarantine') {
         const target = options.getMember('user');
@@ -191,17 +214,6 @@ client.on('interactionCreate', async (interaction) => {
             return interaction.reply({ content: 'Action failed.', ephemeral: true });
         }
     }
-
-    if (commandName === 'steal-emoji') {
-        if (!executor.permissions.has(PermissionFlagsBits.ManageExpressions)) return interaction.reply({ content: 'Unauthorized.', ephemeral: true });
-        try {
-            await guild.emojis.create({ attachment: options.getString('url'), name: options.getString('name') });
-            return interaction.reply({ content: 'Emoji added.', ephemeral: true });
-        } catch (e) {
-            return interaction.reply({ content: 'Creation failed.', ephemeral: true });
-        }
-    }
 });
 
 client.login(token);
-          
