@@ -39,7 +39,7 @@ const saveStats = () => {
     }
 };
 
-// --- SLASH COMMANDS ---
+// --- SLASH COMMANDS ARRAY ---
 const commands = [
     {
         name: 'update-member',
@@ -101,37 +101,41 @@ const commands = [
     }
 ];
 
-// --- REGISTRATION ---
+// --- REGISTRATION (STRICTLY GUILD ONLY) ---
 const rest = new REST({ version: '10' }).setToken(token);
-(async () => {
+
+client.once('ready', async () => {
+    console.log(`Online as ${client.user.tag}`);
     try {
-        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-        console.log('Absolute Zero System Synchronized.');
+        // This is the ONLY place commands are sent. 
+        // Notice it ONLY uses Routes.applicationGuildCommands
+        await rest.put(
+            Routes.applicationGuildCommands(clientId, guildId), 
+            { body: commands }
+        );
+        console.log(`Absolute Zero: Commands strictly synced to Guild ID: ${guildId}`);
     } catch (error) {
         console.error('Sync Error:', error);
     }
-})();
+});
 
-// --- EVENT HANDLERS ---
-client.once('ready', () => console.log(`Online: ${client.user.tag}`));
-
+// --- INTERACTION HANDLER ---
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
     const { commandName, options, guild, member: executor } = interaction;
 
-    // Helper: Hierarchy Check
+    // Helpers
     const isHigher = (target) => {
         if (!target) return false;
         if (target.id === guild.ownerId) return true;
         return target.roles.highest.position >= executor.roles.highest.position;
     };
 
-    // Helper: Bot Hierarchy Check
     const botIsLower = (target) => {
         return target.roles.highest.position >= guild.members.me.roles.highest.position;
     };
 
-    // --- CLAN MGMT ---
+    // --- LOGIC ---
     if (commandName === 'update-member') {
         if (!executor.permissions.has(PermissionFlagsBits.Administrator)) return interaction.reply({ content: 'Unauthorized.', ephemeral: true });
         const user = options.getUser('user');
@@ -163,13 +167,12 @@ client.on('interactionCreate', async (interaction) => {
         const embeds = members.slice(0, 10).map((p, i) => new EmbedBuilder()
             .setColor(0x2b2d31)
             .setTitle(`${i + 1} - ${p.name}`)
-            .setDescription(`| ${p.discord} |\n<<<| | ${p.roblox} | |>>>\n\nCountry : ${p.country}\nStage : ${p.stage}`)
+            .setDescription(`| ${p.discord} |\n**Roblox:** ${p.roblox}\n\n**Country:** ${p.country}\n**Stage:** ${p.stage}`)
             .setThumbnail(p.avatar));
         
         return interaction.reply({ embeds });
     }
 
-    // --- UTILITY ---
     if (commandName === 'say') {
         if (!executor.permissions.has(PermissionFlagsBits.ManageMessages)) return interaction.reply({ content: 'Unauthorized.', ephemeral: true });
         const msg = options.getString('message');
@@ -187,7 +190,6 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // --- MODERATION ---
     if (commandName === 'kick' || commandName === 'ban' || commandName === 'quarantine') {
         const target = options.getMember('user');
         const reason = options.getString('reason') || 'No reason provided';
@@ -217,3 +219,4 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.login(token);
+        
